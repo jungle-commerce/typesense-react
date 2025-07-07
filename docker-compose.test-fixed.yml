@@ -1,0 +1,26 @@
+services:
+  typesense-test:
+    image: typesense/typesense:0.25.2
+    container_name: typesense-react-test
+    ports:
+      - "8108:8108"  # Use the port that tests expect
+    environment:
+      - TYPESENSE_DATA_DIR=/data
+      - TYPESENSE_API_KEY=xyz  # Use the API key that tests expect
+      - TYPESENSE_ENABLE_CORS=true
+    command: '--data-dir /data --api-key=xyz --enable-cors'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8108/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - typesense-test-network
+    # Ensure fresh data for each test run
+    tmpfs:
+      - /data
+
+networks:
+  typesense-test-network:
+    driver: bridge

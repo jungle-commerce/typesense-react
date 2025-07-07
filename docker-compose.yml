@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  typesense:
+    image: typesense/typesense:0.25.2
+    container_name: typesense-react-dev
+    restart: unless-stopped
+    ports:
+      - "8108:8108"
+    volumes:
+      - typesense-data:/data
+    environment:
+      - TYPESENSE_DATA_DIR=/data
+      - TYPESENSE_API_KEY=test_api_key
+      - TYPESENSE_ENABLE_CORS=true
+    command: '--data-dir /data --api-key=test_api_key --enable-cors'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8108/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - typesense-network
+
+volumes:
+  typesense-data:
+    driver: local
+
+networks:
+  typesense-network:
+    driver: bridge

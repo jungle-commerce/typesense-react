@@ -1,0 +1,121 @@
+# Development and testing
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+__mocks__/
+coverage/
+test-results/
+*.test.md
+test_output.txt
+vitest.config.ts
+vitest.config.integration.ts
+jest.config.js
+.eslintrc*
+.prettierrc*
+
+# Source files (we publish compiled JS)
+src/**/*.test.ts
+src/**/*.test.tsx
+src/**/*.spec.ts
+src/**/*.spec.tsx
+src/test/
+
+# Documentation source files
+agent_outputs/
+docs/
+examples/
+*.md
+!README.md
+!LICENSE.md
+!CHANGELOG.md
+
+# CI/CD
+.github/
+.circleci/
+.travis.yml
+appveyor.yml
+
+# Development environment
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build tools and config
+tsconfig.json
+tsconfig.*.json
+rollup.config.js
+webpack.config.js
+babel.config.*
+.babelrc*
+
+# Package management
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+.npmrc
+.yarnrc
+.pnpm-debug.log
+
+# Docker and deployment
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+.dockerignore
+*.dockerfile
+
+# Scripts and tools
+scripts/
+tools/
+bin/
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+.cache/
+tmp/
+temp/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Editor configs
+.editorconfig
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Misc development files
+TODO.md
+NOTES.md
+*.todo
+*.bak
+*.orig
+
+# Agent and tracking files
+AGENT*.md
+DOCUMENTATION*.md
+INTEGRATION*.md
+SUBAGENT*.md
+TEST*.md
+QUICK_FIX_COMMANDS.md
+project-history/
+
+# Keep only essential files for npm package
+# The following will be included:
+# - dist/ (compiled code)
+# - types/ (TypeScript definitions)
+# - README.md
+# - LICENSE.md (if exists)
+# - CHANGELOG.md (if exists)
+# - package.json

@@ -1,0 +1,152 @@
+{
+  "name": "typesense-react",
+  "version": "1.2.1",
+  "description": "MCP server for Typesense React search library - provides headless search state management, advanced filtering, multi-collection search, and schema discovery",
+  "author": "Jungle Commerce",
+  "repository": "https://github.com/jungle-commerce/typesense-react",
+  "license": "MIT",
+  "capabilities": {
+    "search": {
+      "description": "Full-text search with automatic debouncing and state management",
+      "methods": ["query", "setPage", "setPerPage", "setSortBy", "reset"]
+    },
+    "filtering": {
+      "description": "Advanced filtering with checkbox, numeric range, date, select, and custom filters",
+      "methods": ["toggleFacetValue", "setNumericFilter", "setDateFilter", "setSelectiveFilter", "setCustomFilter", "clearFilter", "clearAllFilters"]
+    },
+    "schema": {
+      "description": "Automatic schema discovery and configuration",
+      "methods": ["retrieveSchema", "discoverFacets", "getSearchableFields", "getSortableFields"]
+    },
+    "multiCollection": {
+      "description": "Search across multiple collections simultaneously",
+      "methods": ["searchMultiple", "mergeResults", "configureCollections"]
+    },
+    "state": {
+      "description": "Complete search state management with React hooks",
+      "methods": ["useSearch", "useAdvancedFacets", "useFacetState", "useSchemaDiscovery"]
+    }
+  },
+  "configuration": {
+    "typesense": {
+      "required": true,
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": { "type": "string" },
+              "port": { "type": "number" },
+              "protocol": { "type": "string" }
+            }
+          }
+        },
+        "apiKey": { "type": "string" },
+        "connectionTimeoutSeconds": { "type": "number", "default": 2 },
+        "cacheSearchResultsForSeconds": { "type": "number", "default": 60 }
+      }
+    },
+    "searchDefaults": {
+      "required": false,
+      "type": "object",
+      "properties": {
+        "debounceMs": { "type": "number", "default": 300 },
+        "perPage": { "type": "number", "default": 10 },
+        "searchOnMount": { "type": "boolean", "default": false },
+        "accumulateFacets": { "type": "boolean", "default": false },
+        "enableDisjunctiveFacetQueries": { "type": "boolean", "default": true }
+      }
+    }
+  },
+  "examples": {
+    "basic": {
+      "description": "Simple search with query and results",
+      "code": "const { state, actions } = useSearch();\nactions.setQuery('laptop');"
+    },
+    "filtered": {
+      "description": "Search with faceted filtering",
+      "code": "const facets = useAdvancedFacets();\nfacets.actions.toggleFacetValue('category', 'Electronics');\nfacets.actions.setNumericFilter('price', 100, 1000);"
+    },
+    "schema": {
+      "description": "Auto-configure from schema",
+      "code": "const { schema, facets, searchableFields } = useSchemaDiscovery({\n  collection: 'products',\n  enabled: true\n});"
+    },
+    "multiCollection": {
+      "description": "Search multiple collections",
+      "code": "const { search } = useMultiCollectionContext();\nsearch({\n  query: 'laptop',\n  collections: ['products', 'categories', 'brands'],\n  mergeStrategy: 'relevance'\n});"
+    }
+  },
+  "hooks": {
+    "useSearch": {
+      "description": "Main search hook for query, pagination, and sorting",
+      "returns": {
+        "state": "Complete search state",
+        "actions": "Methods to update search state",
+        "loading": "Loading indicator",
+        "error": "Error state"
+      }
+    },
+    "useAdvancedFacets": {
+      "description": "Advanced faceting with multiple filter types",
+      "returns": {
+        "disjunctiveFacets": "Checkbox filters with OR logic",
+        "numericFilters": "Numeric range filters",
+        "dateFilters": "Date range filters",
+        "selectiveFilters": "Single-select filters",
+        "customFilters": "Custom filter implementations",
+        "activeFilterCount": "Total active filters",
+        "actions": "Methods to manage filters"
+      }
+    },
+    "useSchemaDiscovery": {
+      "description": "Automatic configuration from Typesense schema",
+      "returns": {
+        "schema": "Collection schema",
+        "facets": "Auto-generated facet configurations",
+        "searchableFields": "Fields available for search",
+        "sortableFields": "Fields available for sorting"
+      }
+    },
+    "useFacetState": {
+      "description": "UI state management for facets",
+      "returns": {
+        "expandedFacets": "Expanded/collapsed state",
+        "facetSearchQueries": "Search within facet values",
+        "scrollPositions": "Maintain scroll position",
+        "actions": "Methods to update UI state"
+      }
+    }
+  },
+  "utils": {
+    "filterBuilder": {
+      "description": "Build complex Typesense filter strings",
+      "functions": [
+        "buildDisjunctiveFilter",
+        "buildNumericFilter",
+        "buildDateFilter",
+        "combineFilters",
+        "escapeFilterValue"
+      ]
+    },
+    "sortBuilder": {
+      "description": "Build and parse sort strings",
+      "functions": [
+        "buildSingleSortString",
+        "buildMultiSortString",
+        "parseSortString",
+        "validateSortFields"
+      ]
+    },
+    "schemaPatterns": {
+      "description": "Pattern matching for field detection",
+      "patterns": {
+        "timestamp": ["created_at", "updated_at", "_at$"],
+        "disjunctive": ["tags", "categories", "[]"],
+        "date": ["date", "_date", "birthday"],
+        "select": ["status", "type", "state"]
+      }
+    }
+  }
+}

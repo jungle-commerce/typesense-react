@@ -1,0 +1,49 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+*.tsbuildinfo
+.turbo/
+.claude/
+
+# Test outputs
+coverage/
+test-results/
+*.test.log
+test_output.txt
+test_output_all.txt
+coverage_output.txt
+final_coverage.txt
+full_test_output.log
+final_test_run.log
+full_test_run.txt
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Agent outputs (development only)
+agent_outputs/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
