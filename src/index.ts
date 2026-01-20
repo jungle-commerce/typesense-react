@@ -20,6 +20,7 @@ export { useNumericFacetRange, valuesToRange, isValueInRange, type UseNumericFac
 export { useFacetMode, useSingleSelectValue, useSingleSelectFacet, type FacetModeResult } from './hooks/useFacetMode';
 export { useAdditionalFilters, useAdditionalFiltersWithInitial, type UseAdditionalFiltersReturn } from './hooks/useAdditionalFilters';
 export { useDateFilter, useDateFieldFilter, type UseDateFilterReturn } from './hooks/useDateFilter';
+export { useSearchUrlSync, type UseSearchUrlSyncOptions, type UseSearchUrlSyncReturn } from './hooks/useSearchUrlSync';
 
 // Utility exports
 export {
@@ -96,6 +97,13 @@ export {
   mergeAdditionalFilters,
   validateAdditionalFilters,
 } from './utils/additionalFiltersManager';
+
+export {
+  serializeSearchState,
+  deserializeSearchParams,
+  type UrlSerializerOptions,
+  type UrlDeserializerOptions,
+} from './utils/urlSerializer';
 
 // Type exports
 export type {
