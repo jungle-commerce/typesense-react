@@ -67,7 +67,7 @@
     "seed:reset": "npm run build && node scripts/seed-data.js --reset"
   },
   "dependencies": {
-    "typesense": "^1.7.2"
+    "typesense": "^3.0.3"
   },
   "peerDependencies": {
     "react": "^18.2.0",

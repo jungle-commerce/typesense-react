@@ -10,7 +10,7 @@ import type {
   SelectiveFilterState,
   CustomFilterState,
 } from '../types';
-import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
+import type { CollectionSchema } from 'typesense';
 
 /**
  * Checks if a field is numeric based on schema

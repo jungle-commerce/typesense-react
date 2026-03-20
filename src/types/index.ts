@@ -3,8 +3,7 @@
  * These types define the complete structure of search requests, responses, and state management.
  */
 
-import type { SearchResponse, SearchResponseHit, DocumentSchema, SearchResponseFacetCountSchema } from 'typesense/lib/Typesense/Documents';
-import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
+import type { SearchResponse, SearchResponseHit, DocumentSchema, SearchResponseFacetCountSchema, CollectionSchema } from 'typesense';
 
 /**
  * Configuration for initializing the Typesense client

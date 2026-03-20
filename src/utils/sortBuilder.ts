@@ -3,7 +3,7 @@
  * Handles conversion between single sort string and multi-sort arrays.
  */
 
-import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
+import type { CollectionSchema } from 'typesense';
 
 /**
  * Sort field configuration
