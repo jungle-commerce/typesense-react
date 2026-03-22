@@ -5,22 +5,13 @@
 
 import type { SearchResponse, SearchResponseHit, DocumentSchema, SearchResponseFacetCountSchema } from 'typesense/lib/Typesense/Documents';
 import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
+import type { ConfigurationOptions } from 'typesense/lib/Typesense/Configuration';
 
 /**
- * Configuration for initializing the Typesense client
+ * Configuration for initializing the Typesense client.
+ * Mirrors ConfigurationOptions from typesense-js.
  */
-export interface TypesenseConfig {
-  nodes: Array<{
-    host: string;
-    port: number;
-    protocol: string;
-  }>;
-  apiKey: string;
-  connectionTimeoutSeconds?: number;
-  numRetries?: number;
-  retryIntervalSeconds?: number;
-  cacheSearchResultsForSeconds?: number;
-}
+export type TypesenseConfig = ConfigurationOptions;
 
 /**
  * Extended search request parameters for Typesense

@@ -38,15 +38,9 @@ export class TypesenseSearchClient {
   ) {
     // Initialize client from config or use existing instance
     if ('nodes' in config) {
-      // Ensure all ports are numbers
-      const nodes = config.nodes.map(node => ({
-        ...node,
-        port: typeof node.port === 'string' ? parseInt(node.port, 10) : node.port
-      }));
-      
       this.client = new Typesense.Client({
         ...config,
-        nodes,
+        nodes: config.nodes,
         connectionTimeoutSeconds: config.connectionTimeoutSeconds || 10,
         numRetries: config.numRetries || 3,
         retryIntervalSeconds: config.retryIntervalSeconds || 0.1,
