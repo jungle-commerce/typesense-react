@@ -47,7 +47,6 @@ describe('TypesenseSearchClient Implementation', () => {
       },
     }));
 
-    const Typesense = await import('typesense');
     const { TypesenseSearchClient } = await import('../TypesenseClient');
 
     const client = new TypesenseSearchClient({
@@ -83,7 +82,7 @@ describe('TypesenseSearchClient Implementation', () => {
     vi.doUnmock('typesense');
   });
 
-  it('should handle string port conversion', async () => {
+  it('should pass nodes config to client', async () => {
     vi.doMock('typesense', () => ({
       default: {
         Client: vi.fn().mockImplementation(() => ({})),
@@ -94,7 +93,7 @@ describe('TypesenseSearchClient Implementation', () => {
     const { TypesenseSearchClient } = await import('../TypesenseClient');
 
     new TypesenseSearchClient({
-      nodes: [{ host: 'localhost', port: '8108' as any, protocol: 'http' }],
+      nodes: [{ host: 'localhost', port: 8108, protocol: 'http' }],
       apiKey: 'test-key',
     });
 

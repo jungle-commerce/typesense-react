@@ -3,23 +3,22 @@
  * These types define the complete structure of search requests, responses, and state management.
  */
 
-import type { SearchResponse, SearchResponseHit, DocumentSchema, SearchResponseFacetCountSchema, CollectionSchema } from 'typesense';
+import type {
+  CollectionSchema,
+  DocumentSchema,
+  SearchResponse,
+  SearchResponseFacetCountSchema,
+  SearchResponseHit,
+} from 'typesense';
+import type {
+  ConfigurationOptions,
+} from 'typesense/lib/Typesense/Configuration';
 
 /**
- * Configuration for initializing the Typesense client
+ * Configuration for initializing the Typesense client.
+ * Mirrors ConfigurationOptions from typesense-js.
  */
-export interface TypesenseConfig {
-  nodes: Array<{
-    host: string;
-    port: number;
-    protocol: string;
-  }>;
-  apiKey: string;
-  connectionTimeoutSeconds?: number;
-  numRetries?: number;
-  retryIntervalSeconds?: number;
-  cacheSearchResultsForSeconds?: number;
-}
+export type TypesenseConfig = ConfigurationOptions;
 
 /**
  * Extended search request parameters for Typesense
