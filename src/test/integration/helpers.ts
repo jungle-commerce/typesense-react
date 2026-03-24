@@ -3,8 +3,8 @@
  * Provides utilities for schema management, data seeding, query building, and cleanup
  */
 
-import { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
-import { SearchParams } from 'typesense/lib/Typesense/Documents';
+import type { CollectionCreateSchema } from 'typesense';
+import type { SearchParams } from 'typesense';
 import { TypesenseTestClient, TEST_CONFIG } from './setup';
 
 /**

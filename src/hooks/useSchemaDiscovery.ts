@@ -6,7 +6,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useSearchContext } from '../providers/SearchProvider';
 import type { FacetConfig } from '../types';
-import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
+import type { CollectionSchema } from 'typesense';
 import {
   type SchemaPatternConfig,
   type FieldPattern,
