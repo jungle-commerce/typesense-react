@@ -41,7 +41,7 @@ jobs:
         TYPESENSE_HOST: localhost
         TYPESENSE_PORT: 8109
         TYPESENSE_PROTOCOL: http
-        TYPESENSE_API_KEY: test_api_key
+        TYPESENSE_API_KEY: xyz
         CI: true
     
     - name: Upload test results
@@ -103,7 +103,7 @@ jobs:
         VITE_TYPESENSE_HOST: localhost
         VITE_TYPESENSE_PORT: 8109
         VITE_TYPESENSE_PROTOCOL: http
-        VITE_TYPESENSE_API_KEY: test_api_key
+        VITE_TYPESENSE_API_KEY: xyz
     
     - name: Stop containers
       if: always()
