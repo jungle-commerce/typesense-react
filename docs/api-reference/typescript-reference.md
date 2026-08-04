@@ -11,6 +11,7 @@ This comprehensive guide documents all TypeScript types and interfaces in the ty
   - [Filter State Types](#filter-state-types)
   - [Search State & Actions](#search-state--actions)
   - [Provider Types](#provider-types)
+  - [Hook Option Types](#hook-option-types)
   - [Hook Return Types](#hook-return-types)
 - [Multi-Collection Types](#multi-collection-types)
 - [Utility Types](#utility-types)
@@ -413,7 +414,7 @@ interface SearchProviderProps {
   initialState?: Partial<SearchState>;
   /** Facet configurations */
   facets?: FacetConfig[];
-  /** Whether to search on mount */
+  /** Whether the provider performs the initial search on mount (default: true) */
   searchOnMount?: boolean;
   /** Callback when state changes */
   onStateChange?: (state: SearchState) => void;
@@ -425,8 +426,16 @@ interface SearchProviderProps {
   enableDisjunctiveFacetQueries?: boolean;
   /** Enable accumulation of facet values across searches */
   accumulateFacets?: boolean;
+  /** Debounce delay for query (text) changes in milliseconds (default: 300) */
+  debounceMs?: number;
+  /** Maximum number of facet values to return (default: 10000) */
+  maxFacetValues?: number;
+  /** Fields to search in (comma-separated). Overrides schema-derived fields. */
+  queryBy?: string;
 }
 ```
+
+Note: `searchOnMount={false}` suppresses only the initial mount search — later query changes still trigger searches.
 
 #### SearchContextValue
 
@@ -444,12 +453,79 @@ interface SearchContextValue {
   collection: string;
   /** Initial search parameters */
   initialSearchParams?: Partial<SearchRequest>;
+  /** The provider's search engine (single search scheduler per provider) */
+  searchEngine: SearchEngine;
   /** Search configuration */
   config: {
     searchOnMount: boolean;
     performanceMode: boolean;
     enableDisjunctiveFacetQueries: boolean;
   };
+}
+```
+
+#### SearchEngine
+
+The provider-level search engine: the single owner of search scheduling for a SearchProvider tree.
+
+```typescript
+interface SearchEngine {
+  /** Runs a search now. Without an argument, builds the request from the latest state. */
+  search: (request?: SearchRequest) => Promise<void>;
+  /** Builds a request from the latest state (optionally overriding queryBy/maxFacetValues) */
+  buildRequest: (overrides?: { queryBy?: string; maxFacetValues?: number }) => SearchRequest;
+  /** Registers search lifecycle listeners; returns an unsubscribe function */
+  subscribe: (listeners: SearchEventListeners) => () => void;
+}
+```
+
+#### SearchEventListeners
+
+Search lifecycle listeners, notified for every search the provider's engine completes (regardless of what triggered it).
+
+```typescript
+interface SearchEventListeners {
+  /** Called with the raw response after a successful search */
+  onSearchSuccess?: (results: TypesenseSearchResponse) => void;
+  /** Called after a failed search */
+  onSearchError?: (error: Error) => void;
+}
+```
+
+### Hook Option Types
+
+#### UseSearchOptions
+
+Options for the `useSearch` hook. Search scheduling is owned by the provider, so the scheduling-related options here are deprecated no-ops.
+
+```typescript
+interface UseSearchOptions {
+  /**
+   * Fields to search in (comma-separated). Only applies to searches started
+   * by THIS hook's `actions.search()`; auto-searches use the provider-level
+   * `queryBy`.
+   */
+  queryBy?: string;
+  /**
+   * @deprecated Debouncing is provider-wide now — set `debounceMs` on
+   * `SearchProvider` instead. This option is ignored.
+   */
+  debounceMs?: number;
+  /**
+   * @deprecated The mount search is provider-wide now — set `searchOnMount`
+   * on `SearchProvider` instead. This option is ignored.
+   */
+  searchOnMount?: boolean;
+  /**
+   * Maximum number of facet values to return. Only applies to searches
+   * started by THIS hook's `actions.search()`; auto-searches use the
+   * provider-level `maxFacetValues`.
+   */
+  maxFacetValues?: number;
+  /** Callback when a search succeeds (fires for every provider search) */
+  onSearchSuccess?: (results: any) => void;
+  /** Callback when a search fails (fires for every provider search) */
+  onSearchError?: (error: Error) => void;
 }
 ```
 

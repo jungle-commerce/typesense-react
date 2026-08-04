@@ -20,14 +20,27 @@ This document provides practical examples of using the typesense-react hooks, ex
 ### Simple Search with Debouncing
 
 ```typescript
-import { useSearch } from 'typesense-react';
+import { SearchProvider, useSearch } from 'typesense-react';
+
+// Debouncing, the mount search, and queryBy for auto-searches are
+// configured on SearchProvider (useSearch's debounceMs/searchOnMount
+// options are deprecated no-ops)
+function App() {
+  return (
+    <SearchProvider
+      config={config}
+      collection="products"
+      queryBy="title,description"
+      debounceMs={500}
+      searchOnMount={false}
+    >
+      <SearchBox />
+    </SearchProvider>
+  );
+}
 
 function SearchBox() {
-  const { state, actions, loading } = useSearch({
-    queryBy: 'title,description',
-    debounceMs: 500,
-    searchOnMount: false
-  });
+  const { state, actions, loading } = useSearch();
 
   return (
     <div>
@@ -56,11 +69,10 @@ function SearchBox() {
 ### Search with Pagination
 
 ```typescript
+// Wrap in <SearchProvider queryBy="name,description"> — searchOnMount
+// defaults to true on the provider, so results load immediately
 function PaginatedSearch() {
-  const { state, actions } = useSearch({
-    queryBy: 'name,description',
-    searchOnMount: true
-  });
+  const { state, actions } = useSearch();
 
   const totalPages = Math.ceil((state.results?.found || 0) / state.perPage);
 
@@ -1133,6 +1145,7 @@ function EcommerceSearch() {
     <SearchProvider
       client={typesenseClient}
       collection="products"
+      debounceMs={300}
       config={{
         enableDisjunctiveFacetQueries: true,
         facets: [
@@ -1150,7 +1163,7 @@ function EcommerceSearch() {
 }
 
 function SearchInterface() {
-  const search = useSearch({ debounceMs: 300 });
+  const search = useSearch(); // Debounce comes from the provider's debounceMs
   const facets = useAdvancedFacets();
   const accumulated = useAccumulatedFacets();
   const dateFilter = useDateFilter();

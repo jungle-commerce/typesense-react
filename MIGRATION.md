@@ -2,6 +2,57 @@
 
 This guide helps you migrate between major versions of `@jungle-commerce/typesense-react`.
 
+## Migrating from 3.0.x to 3.1.0
+
+Search scheduling is now owned by `SearchProvider` (one search per state change for the whole tree) instead of every `useSearch()` call site scheduling its own. For most apps **no code changes are required** — but review the notes below if you used per-hook search options.
+
+### Per-hook options that moved to the provider
+
+```tsx
+// Before: per-hook (each call site scheduled its own searches)
+useSearch({ searchOnMount: false, debounceMs: 150 });
+
+// After: provider-level (single scheduler)
+<SearchProvider searchOnMount={false} debounceMs={150} ...>
+```
+
+- `useSearch({ searchOnMount })` and `useSearch({ debounceMs })` are ignored. Set them on the provider.
+- `SearchProvider`'s `searchOnMount` now defaults to `true` (matching the old effective behaviour, since the per-hook default was `true`). Pass `searchOnMount={false}` explicitly if you render a provider that must not search on mount.
+- `useSearch({ queryBy, maxFacetValues })` still work but only affect that hook's own `actions.search()` calls; auto-searches use the new provider-level `queryBy` / `maxFacetValues` props.
+
+### If you already pass `searchOnMount={false}` to SearchProvider
+
+In 3.0.x that prop was **inert** — the per-hook default (`true`) always won, so your tree mount-searched anyway. In 3.1.0 the provider prop is authoritative: the initial search is suppressed. If your list page relied on the old behaviour, delete the prop. Note the new semantics are "skip only the initial search": later query changes (an autocomplete driving `setQuery`) still search normally.
+
+Related: a provider tree with **zero** `useSearch()` consumers previously never searched; the provider now runs the mount search itself unless `searchOnMount={false}`.
+
+### Hand-built SearchContext mocks in tests
+
+`SearchContextValue` gained a required `searchEngine` field, which `useSearch()` subscribes to. If your tests build a context value by hand (per the context-api docs), add a stub:
+
+```tsx
+const mockContextValue: SearchContextValue = {
+  state: mockState,
+  dispatch: vi.fn(),
+  client: mockClient,
+  collection: 'products',
+  searchEngine: {
+    search: vi.fn(async () => {}),
+    buildRequest: vi.fn(() => ({ q: '*', query_by: '*' })),
+    subscribe: vi.fn(() => () => {}),
+  },
+  config: { searchOnMount: true, performanceMode: false, enableDisjunctiveFacetQueries: true },
+};
+```
+
+### Search lifecycle callbacks are provider-wide
+
+`onSearchSuccess` / `onSearchError` passed to `useSearch()` now fire for every completed search in the provider tree, not only searches that hook triggered. If a callback must react only to its own searches, correlate through request state rather than assuming the trigger.
+
+### No functional change to faceting
+
+Disjunctive (multi-select) faceting is unchanged: one main query plus one exclusion query per active facet group, merged into the same result shape. The deduplication layers only collapse *byte-identical concurrent* requests, which were pure waste.
+
 ## Migrating to 2.0.3
 
 ### Bug Fixes

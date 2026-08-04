@@ -19,13 +19,24 @@ This document describes common patterns and best practices for using typesense-r
 
 **Problem**: Prevent excessive API calls while typing and provide visual feedback.
 
-**Solution**:
+**Solution**: Debouncing is provider-wide — set `debounceMs` on `SearchProvider` (default 300). The `useSearch({ debounceMs })` option is a deprecated no-op.
+
 ```typescript
+function App() {
+  return (
+    <SearchProvider
+      config={config}
+      collection="products"
+      debounceMs={500} // Wait 500ms after typing stops
+      searchOnMount={false}
+    >
+      <DebouncedSearchPattern />
+    </SearchProvider>
+  );
+}
+
 function DebouncedSearchPattern() {
-  const { state, actions, loading } = useSearch({
-    debounceMs: 500, // Wait 500ms after typing stops
-    searchOnMount: false
-  });
+  const { state, actions, loading } = useSearch();
 
   return (
     <div className="search-container">
@@ -61,9 +72,9 @@ function URLPersistedSearch() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   
-  const { state, actions } = useSearch({
-    searchOnMount: false
-  });
+  // Set searchOnMount={false} on the SearchProvider so the provider
+  // waits for the URL-derived state before its first search
+  const { state, actions } = useSearch();
 
   // Initialize from URL
   useEffect(() => {
@@ -100,62 +111,83 @@ function URLPersistedSearch() {
 
 **Problem**: Provide instant feedback with search suggestions as user types.
 
-**Solution**:
+**Solution**: Each `SearchProvider` owns exactly ONE debounce schedule (`debounceMs`), so two different debounce rates require two providers — one per collection — rendered as siblings, with the shared query synced into each. (Alternatively, keep one provider and drive the second search imperatively via `actions.search()`, which is not debounced.)
+
 ```typescript
+function QuerySync({ query }: { query: string }) {
+  const { actions } = useSearch();
+
+  useEffect(() => {
+    actions.setQuery(query); // The provider debounces and searches
+  }, [query]);
+
+  return null;
+}
+
 function InstantSearchPattern() {
-  const mainSearch = useSearch({
-    debounceMs: 300,
-    searchOnMount: false
-  });
-  
-  const suggestions = useSearch({
-    debounceMs: 100, // Faster for suggestions
-    searchOnMount: false
-  });
-
+  const [query, setQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const handleQueryChange = (query: string) => {
-    mainSearch.actions.setQuery(query);
-    
-    if (query.length >= 2) {
-      // Search in a lightweight suggestions collection
-      suggestions.actions.setQuery(query);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
-  };
 
   return (
     <div className="instant-search">
       <input
         type="text"
-        value={mainSearch.state.query}
-        onChange={(e) => handleQueryChange(e.target.value)}
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setShowSuggestions(e.target.value.length >= 2);
+        }}
         onFocus={() => setShowSuggestions(true)}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
       />
-      
-      {showSuggestions && suggestions.state.results && (
-        <div className="suggestions">
-          {suggestions.state.results.hits.slice(0, 5).map(hit => (
-            <div
-              key={hit.document.id}
-              onClick={() => {
-                mainSearch.actions.setQuery(hit.document.title);
-                setShowSuggestions(false);
-              }}
-            >
-              {hit.document.title}
-            </div>
-          ))}
-        </div>
-      )}
-      
-      <SearchResults results={mainSearch.state.results} />
+
+      <SearchProvider
+        config={config}
+        collection="suggestions"
+        debounceMs={100} // Faster for suggestions
+        searchOnMount={false}
+      >
+        <QuerySync query={query} />
+        {showSuggestions && (
+          <SuggestionsList onPick={(title) => {
+            setQuery(title);
+            setShowSuggestions(false);
+          }} />
+        )}
+      </SearchProvider>
+
+      <SearchProvider
+        config={config}
+        collection="products"
+        debounceMs={300}
+        searchOnMount={false}
+      >
+        <QuerySync query={query} />
+        <MainResults />
+      </SearchProvider>
     </div>
   );
+}
+
+function SuggestionsList({ onPick }: { onPick: (title: string) => void }) {
+  const { state } = useSearch();
+
+  if (!state.results) return null;
+
+  return (
+    <div className="suggestions">
+      {state.results.hits.slice(0, 5).map(hit => (
+        <div key={hit.document.id} onClick={() => onPick(hit.document.title)}>
+          {hit.document.title}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MainResults() {
+  const { state } = useSearch();
+  return <SearchResults results={state.results} />;
 }
 ```
 
@@ -908,9 +940,9 @@ function ABTestSearchPattern() {
 
   return (
     <SearchProvider
-      client={typesenseClient}
+      config={typesenseConfig}
       collection="products"
-      config={searchConfig}
+      {...searchConfig}
     >
       <div data-variant={variant}>
         <SearchInterface />

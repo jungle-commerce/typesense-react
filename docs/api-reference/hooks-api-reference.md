@@ -19,7 +19,7 @@ This document provides comprehensive API documentation for all hooks available i
 
 ## useSearch
 
-Main hook for performing searches and managing search state. Handles query debouncing, filter building, and automatic search triggers.
+Main hook for reading search state and dispatching search actions. Search *scheduling* (mount search, query debouncing, automatic search triggers) lives in `SearchProvider`, not in this hook — configure it via the provider's `searchOnMount`, `debounceMs`, `maxFacetValues`, and `queryBy` props.
 
 ### Usage
 
@@ -35,12 +35,12 @@ const searchHook = useSearch(options);
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `queryBy` | `string` | `undefined` | Fields to search in (comma-separated) |
-| `debounceMs` | `number` | `300` | Debounce delay for search queries in milliseconds |
-| `searchOnMount` | `boolean` | `true` | Whether to search on mount |
-| `maxFacetValues` | `number` | `10000` | Maximum number of facet values to return |
-| `onSearchSuccess` | `(results: any) => void` | `undefined` | Callback when search succeeds |
-| `onSearchError` | `(error: Error) => void` | `undefined` | Callback when search fails |
+| `queryBy` | `string` | `undefined` | Fields to search in (comma-separated). Only applies to this hook's imperative `actions.search()` calls; auto-searches use the provider-level `queryBy` |
+| `debounceMs` | `number` | — | **Deprecated no-op.** Debouncing is provider-wide — set `debounceMs` on `SearchProvider` instead |
+| `searchOnMount` | `boolean` | — | **Deprecated no-op.** The mount search is provider-wide — set `searchOnMount` on `SearchProvider` instead |
+| `maxFacetValues` | `number` | `undefined` | Maximum number of facet values to return. Only applies to this hook's imperative `actions.search()` calls; auto-searches use the provider-level `maxFacetValues` |
+| `onSearchSuccess` | `(results: any) => void` | `undefined` | Callback when a search succeeds (fires for every search the provider completes) |
+| `onSearchError` | `(error: Error) => void` | `undefined` | Callback when a search fails (fires for every search the provider completes) |
 
 ### Return Value: `UseSearchReturn`
 
@@ -69,11 +69,23 @@ interface UseSearchReturn {
 ### Example
 
 ```typescript
+// Search scheduling is configured on the provider, not the hook
+function App() {
+  return (
+    <SearchProvider
+      config={config}
+      collection="articles"
+      queryBy="title,description"
+      debounceMs={500}
+      searchOnMount={false}
+    >
+      <SearchComponent />
+    </SearchProvider>
+  );
+}
+
 function SearchComponent() {
   const { state, actions, loading, error } = useSearch({
-    queryBy: 'title,description',
-    debounceMs: 500,
-    searchOnMount: false,
     onSearchSuccess: (results) => console.log('Search completed', results),
     onSearchError: (error) => console.error('Search failed', error)
   });
@@ -904,8 +916,9 @@ function PriceRangeFilter() {
 ### Combining Multiple Hooks
 
 ```typescript
+// Debouncing is configured on the SearchProvider (debounceMs={300}), not on useSearch
 function AdvancedSearchComponent() {
-  const search = useSearch({ debounceMs: 300 });
+  const search = useSearch();
   const facets = useAdvancedFacets();
   const schema = useSchemaDiscovery();
   const accumulatedFacets = useAccumulatedFacets();

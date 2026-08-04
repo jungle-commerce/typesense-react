@@ -363,7 +363,7 @@ export interface SearchProviderProps {
   initialState?: Partial<SearchState>;
   /** Facet configurations */
   facets?: FacetConfig[];
-  /** Whether to search on mount */
+  /** Whether the provider performs the initial search on mount (default: true) */
   searchOnMount?: boolean;
   /** Callback when state changes */
   onStateChange?: (state: SearchState) => void;
@@ -375,6 +375,36 @@ export interface SearchProviderProps {
   enableDisjunctiveFacetQueries?: boolean;
   /** Enable accumulation of facet values across searches */
   accumulateFacets?: boolean;
+  /** Debounce delay for query (text) changes in milliseconds (default: 300) */
+  debounceMs?: number;
+  /** Maximum number of facet values to return (default: 10000) */
+  maxFacetValues?: number;
+  /** Fields to search in (comma-separated). Overrides schema-derived fields. */
+  queryBy?: string;
+}
+
+/**
+ * Search lifecycle listeners, notified for every search the provider's
+ * engine completes (regardless of what triggered it)
+ */
+export interface SearchEventListeners {
+  /** Called with the raw response after a successful search */
+  onSearchSuccess?: (results: TypesenseSearchResponse) => void;
+  /** Called after a failed search */
+  onSearchError?: (error: Error) => void;
+}
+
+/**
+ * The provider-level search engine: the single owner of search scheduling
+ * for a SearchProvider tree
+ */
+export interface SearchEngine {
+  /** Runs a search now. Without an argument, builds the request from the latest state. */
+  search: (request?: SearchRequest) => Promise<void>;
+  /** Builds a request from the latest state (optionally overriding queryBy/maxFacetValues) */
+  buildRequest: (overrides?: { queryBy?: string; maxFacetValues?: number }) => SearchRequest;
+  /** Registers search lifecycle listeners; returns an unsubscribe function */
+  subscribe: (listeners: SearchEventListeners) => () => void;
 }
 
 /**
@@ -391,6 +421,8 @@ export interface SearchContextValue {
   collection: string;
   /** Initial search parameters */
   initialSearchParams?: Partial<SearchRequest>;
+  /** The provider's search engine (single search scheduler per provider) */
+  searchEngine: SearchEngine;
   /** Search configuration */
   config: {
     searchOnMount: boolean;

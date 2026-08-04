@@ -23,6 +23,8 @@ export { useDateFilter, useDateFieldFilter, type UseDateFilterReturn } from './h
 export { useSearchUrlSync, type UseSearchUrlSyncOptions, type UseSearchUrlSyncReturn } from './hooks/useSearchUrlSync';
 
 // Utility exports
+export { buildSearchRequest, type BuildSearchRequestOptions } from './utils/requestBuilder';
+
 export {
   escapeFilterValue,
   buildDisjunctiveFilter,
@@ -139,6 +141,10 @@ export type {
   // Hook return types
   UseSearchReturn,
   UseAdvancedFacetsReturn,
+
+  // Search engine types
+  SearchEngine,
+  SearchEventListeners,
 } from './types';
 
 // Re-export Typesense types that consumers might need

@@ -49,7 +49,10 @@ function App() {
 | `initialState` | `Partial<SearchState>` | `{}` | Initial search state values |
 | `initialSearchParams` | `Partial<SearchRequest>` | `undefined` | Initial search parameters |
 | `facets` | `FacetConfig[]` | `[]` | Facet configurations |
-| `searchOnMount` | `boolean` | `false` | Whether to perform search on mount |
+| `searchOnMount` | `boolean` | `true` | Whether to perform the initial search on mount. `false` suppresses only the mount search — later query changes still search |
+| `debounceMs` | `number` | `300` | Debounce delay for query (text) changes in milliseconds |
+| `maxFacetValues` | `number` | `10000` | Maximum number of facet values to return |
+| `queryBy` | `string` | `undefined` | Fields to search in (comma-separated). Overrides schema-derived fields |
 | `onStateChange` | `(state: SearchState) => void` | `undefined` | Callback when state changes |
 | `performanceMode` | `boolean` | `false` | Enable performance optimizations |
 | `enableDisjunctiveFacetQueries` | `boolean` | `true` | Enable OR logic for facets |
@@ -145,11 +148,25 @@ interface SearchContextValue {
   client: TypesenseSearchClient;
   collection: string;
   initialSearchParams?: Partial<SearchRequest>;
+  searchEngine: SearchEngine;
   config: {
     searchOnMount: boolean;
     performanceMode: boolean;
     enableDisjunctiveFacetQueries: boolean;
   };
+}
+```
+
+The `searchEngine` is the provider's single search scheduler — every auto-search (mount, query changes, filter changes) runs through it:
+
+```typescript
+interface SearchEngine {
+  /** Runs a search now. Without an argument, builds the request from the latest state. */
+  search: (request?: SearchRequest) => Promise<void>;
+  /** Builds a request from the latest state (optionally overriding queryBy/maxFacetValues) */
+  buildRequest: (overrides?: { queryBy?: string; maxFacetValues?: number }) => SearchRequest;
+  /** Registers search lifecycle listeners; returns an unsubscribe function */
+  subscribe: (listeners: SearchEventListeners) => () => void;
 }
 ```
 

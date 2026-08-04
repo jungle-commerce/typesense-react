@@ -24,6 +24,12 @@ export class TypesenseSearchClient {
   private cache: Map<string, CacheEntry>;
   private cacheTimeout: number;
   private maxCacheSize: number;
+  /**
+   * Requests currently on the wire, keyed like the result cache. Concurrent
+   * identical requests (e.g. several components searching the same provider
+   * state at once) share one network call instead of stampeding the server.
+   */
+  private inFlight: Map<string, Promise<TypesenseSearchResponse>>;
 
   /**
    * Creates a new TypesenseSearchClient instance
@@ -52,6 +58,7 @@ export class TypesenseSearchClient {
     this.cache = new Map();
     this.cacheTimeout = cacheTimeout;
     this.maxCacheSize = maxCacheSize;
+    this.inFlight = new Map();
   }
 
   /**
@@ -115,44 +122,76 @@ export class TypesenseSearchClient {
     params: SearchRequest,
     useCache: boolean = true
   ): Promise<TypesenseSearchResponse> {
-    // Check cache first if enabled
-    if (useCache) {
-      const cacheKey = this.generateCacheKey(collection, params);
-      const cached = this.cache.get(cacheKey);
+    const cacheKey = this.generateCacheKey(collection, params);
 
+    if (useCache) {
+      const cached = this.cache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
         // Return cached result
         return Promise.resolve(cached.value);
       }
+
+      // Share an identical request that is already on the wire. Without this,
+      // N concurrent callers with the same params produce N network calls —
+      // the result cache only helps once a response has landed.
+      const pending = this.inFlight.get(cacheKey);
+      if (pending) {
+        return pending;
+      }
     }
 
+    const requestPromise = this.executeSearch(collection, params)
+      .then(response => {
+        if (useCache) {
+          this.cache.set(cacheKey, {
+            key: cacheKey,
+            value: response,
+            timestamp: Date.now()
+          });
+
+          // Clean up cache
+          this.cleanCache();
+          this.manageCacheSize();
+        }
+        return response;
+      })
+      .finally(() => {
+        // A failed request must not pin the rejection for later callers, and
+        // clearCache() may have replaced this entry with a newer request —
+        // only remove our own.
+        if (this.inFlight.get(cacheKey) === requestPromise) {
+          this.inFlight.delete(cacheKey);
+        }
+      });
+
+    if (useCache) {
+      this.inFlight.set(cacheKey, requestPromise);
+    }
+
+    return requestPromise;
+  }
+
+  /**
+   * Executes the search request against Typesense
+   * @param collection - Collection name to search
+   * @param params - Search parameters
+   * @returns Search response promise
+   */
+  private async executeSearch(
+    collection: string,
+    params: SearchRequest
+  ): Promise<TypesenseSearchResponse> {
     try {
       // Perform the search
       const searchParams = params.preset ? params : { ...params, preset: undefined };
       const cleanedParams = Object.fromEntries(
         Object.entries(searchParams).filter(([_, v]) => v !== undefined)
       );
-      
-      const response = await this.client
+
+      return await this.client
         .collections(collection)
         .documents()
         .search(cleanedParams) as TypesenseSearchResponse;
-
-      // Cache the result if caching is enabled
-      if (useCache) {
-        const cacheKey = this.generateCacheKey(collection, params);
-        this.cache.set(cacheKey, {
-          key: cacheKey,
-          value: response,
-          timestamp: Date.now()
-        });
-
-        // Clean up cache
-        this.cleanCache();
-        this.manageCacheSize();
-      }
-
-      return response;
     } catch (error) {
       // Enhance error with more context
       const enhancedError = new Error(
@@ -203,21 +242,25 @@ export class TypesenseSearchClient {
   }
 
   /**
-   * Clears the cache
+   * Clears the cache, including in-flight request sharing. A search issued
+   * after clearCache() always reaches the network, even if an identical
+   * request is still pending — callers use this to force freshness.
    */
   clearCache(): void {
     this.cache.clear();
+    this.inFlight.clear();
   }
 
   /**
    * Gets cache statistics
    * @returns Cache statistics
    */
-  getCacheStats(): { size: number; maxSize: number; timeout: number } {
+  getCacheStats(): { size: number; maxSize: number; timeout: number; inFlightCount: number } {
     return {
       size: this.cache.size,
       maxSize: this.maxCacheSize,
-      timeout: this.cacheTimeout
+      timeout: this.cacheTimeout,
+      inFlightCount: this.inFlight.size
     };
   }
 

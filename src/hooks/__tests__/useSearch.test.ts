@@ -211,8 +211,12 @@ describe('useSearch', () => {
   });
 
   it('respects debounce delay', async () => {
-    const { result } = renderHook(() => useSearch({ debounceMs: 100, searchOnMount: false }), {
+    // debounceMs is a provider-level option now — the provider owns the one
+    // search scheduler for the whole tree
+    const { result } = renderHook(() => useSearch(), {
       wrapper: createSearchProviderWrapper({
+        debounceMs: 100,
+        searchOnMount: false,
         initialState: {
           searchPerformed: true, // Mark as already performed to trigger search on query change
         },
@@ -307,11 +311,13 @@ describe('useSearch', () => {
 
   it('does not perform search on mount when disabled', async () => {
     mockClient.search.mockClear();
-    
+
+    // searchOnMount is a provider-level option now — a hook cannot opt a
+    // tree out of (or into) the mount search
     const { result } = renderHook(
-      () => useSearch({ searchOnMount: false }),
+      () => useSearch(),
       {
-        wrapper: createSearchProviderWrapper(),
+        wrapper: createSearchProviderWrapper({ searchOnMount: false }),
       }
     );
 
