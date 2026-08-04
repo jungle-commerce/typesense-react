@@ -615,12 +615,14 @@ describe('Integration Tests', () => {
 
       render(<WrapperComponent />);
 
+      // The schema arrives via a separate promise, so "Ready" can render a
+      // tick before discovery output — assert the eventual state together
+      // (was a Node-scheduling-sensitive race that flaked on CI).
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toHaveTextContent('Ready');
+        // Should have only category and in_stock (tags and brand are excluded, numeric fields are disabled)
+        expect(screen.getByTestId('facet-count')).toHaveTextContent('2 facets');
       });
-
-      // Should have only category and in_stock (tags and brand are excluded, numeric fields are disabled)
-      expect(screen.getByTestId('facet-count')).toHaveTextContent('2 facets');
       expect(screen.getByTestId('facet-fields')).toHaveTextContent('category, in_stock');
     });
   });
