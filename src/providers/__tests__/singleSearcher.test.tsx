@@ -292,4 +292,49 @@ describe('provider-level search engine', () => {
       expect(getByTestId('consumer-0').textContent).not.toBe('-');
     });
   });
+
+  it('numeric facet bounds come from exact stats, not the returned top-N values', async () => {
+    // Typesense's stats carry the true extremes even when only a few facet
+    // values are requested — bounds from values alone would clamp the range
+    // slider to the most common values.
+    const response = {
+      ...createMockSearchResponse(),
+      facet_counts: [
+        {
+          field_name: 'priceTotal',
+          counts: [
+            { value: '29.95', count: 4000 },
+            { value: '49.95', count: 3000 },
+          ],
+          stats: { min: 0, max: 88725, avg: 39.9, sum: 28250742 },
+        },
+      ],
+    };
+    mockClient.search.mockResolvedValue(response);
+
+    let observedBounds: unknown;
+    const BoundsProbe: React.FC = () => {
+      const { state } = useSearch();
+      observedBounds = state.numericFacetRanges?.priceTotal?.bounds;
+      return null;
+    };
+
+    render(
+      <SearchProvider
+        {...defaultProps}
+        initialState={{
+          schema: {
+            name: 'products',
+            fields: [{ name: 'priceTotal', type: 'float', facet: true }],
+          } as any,
+        }}
+      >
+        <BoundsProbe />
+      </SearchProvider>
+    );
+
+    await waitFor(() => {
+      expect(observedBounds).toEqual({ min: 0, max: 88725 });
+    });
+  });
 });

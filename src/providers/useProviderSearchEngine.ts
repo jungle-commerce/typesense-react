@@ -231,32 +231,44 @@ export function useProviderSearchEngine(params: UseProviderSearchEngineParams): 
         for (const facetResult of finalResult.facet_counts) {
           const field = currentState.schema.fields?.find(f => f.name === facetResult.field_name);
           if (field && ['int32', 'int64', 'float'].includes(field.type)) {
-            const numericValues = facetResult.counts
-              .map((c: any) => parseFloat(c.value))
-              .filter((n: number) => !isNaN(n));
-
-            if (numericValues.length > 0) {
-              // If accumulating facets, use the accumulated bounds instead
-              if (currentState.accumulateFacets && currentState.accumulatedFacetValues[facetResult.field_name]?.numericBounds) {
-                const accBounds = currentState.accumulatedFacetValues[facetResult.field_name].numericBounds!;
-                dispatch({
-                  type: 'UPDATE_NUMERIC_FACET_BOUNDS',
-                  payload: {
-                    field: facetResult.field_name,
-                    min: accBounds.min,
-                    max: accBounds.max,
-                  },
-                });
-              } else {
-                dispatch({
-                  type: 'UPDATE_NUMERIC_FACET_BOUNDS',
-                  payload: {
-                    field: facetResult.field_name,
-                    min: Math.min(...numericValues),
-                    max: Math.max(...numericValues),
-                  },
-                });
+            // Typesense returns exact min/max stats for numeric facets no
+            // matter how few facet values are requested — prefer them over
+            // deriving bounds from the returned values, which are the top N
+            // by count and can miss the extremes entirely. (This is also
+            // what makes a small maxFacetValues safe: faceting a
+            // high-cardinality numeric field with a large max_facet_values
+            // is O(distinct values) server-side and times out on large
+            // filtered result sets, while the stats are free.)
+            const stats = facetResult.stats;
+            let min: number | undefined;
+            let max: number | undefined;
+            if (typeof stats?.min === 'number' && typeof stats?.max === 'number') {
+              min = stats.min;
+              max = stats.max;
+            } else {
+              const numericValues = facetResult.counts
+                .map((c: any) => parseFloat(c.value))
+                .filter((n: number) => !isNaN(n));
+              if (numericValues.length > 0) {
+                min = Math.min(...numericValues);
+                max = Math.max(...numericValues);
               }
+            }
+
+            if (min !== undefined && max !== undefined) {
+              // Accumulated bounds only ever widen, so a narrowed search
+              // cannot shrink the slider range mid-session
+              const accBounds = currentState.accumulateFacets
+                ? currentState.accumulatedFacetValues[facetResult.field_name]?.numericBounds
+                : undefined;
+              dispatch({
+                type: 'UPDATE_NUMERIC_FACET_BOUNDS',
+                payload: {
+                  field: facetResult.field_name,
+                  min: accBounds ? Math.min(accBounds.min, min) : min,
+                  max: accBounds ? Math.max(accBounds.max, max) : max,
+                },
+              });
             }
           }
         }

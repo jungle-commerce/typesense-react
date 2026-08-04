@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stale responses can no longer overwrite newer ones**: each search carries a sequence id and only the latest dispatched search commits its results (last *intent* wins, not last *arrival*). Rapid page/filter changes previously raced.
 - An imperative `actions.search()` is honoured even while a byte-identical request is still in flight (the forced response wins via the sequence guard) — required by refresh flows that `clearCache()` then re-search.
 - `actions.reset()` re-runs the initial search and repopulates the list (previously the rebuilt request could be skipped as a duplicate, leaving the list permanently blank).
+- **Numeric facet bounds now use Typesense's exact facet `stats` (min/max)** instead of being derived from the returned top-N facet values. Stats are exact regardless of `max_facet_values`, so consumers can (and should) request far fewer facet values: faceting a high-cardinality numeric field with a large `max_facet_values` is O(distinct values) server-side — measured 12.4s for one float field over a 1.5M-doc filtered result set at the old 10000 default vs 0.6s at 50 — while range-slider bounds stay exact. With `accumulateFacets`, bounds now monotonically widen (union of accumulated and current) instead of being pinned to accumulated values.
 
 ### Changed
 - `SearchProvider` gains `debounceMs` (default 300), `maxFacetValues` (default 10000) and `queryBy` props — these were previously per-hook options.
