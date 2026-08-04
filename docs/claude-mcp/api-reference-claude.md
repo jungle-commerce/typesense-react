@@ -774,12 +774,15 @@ interface SearchProviderProps {
   initialSearchParams?: Partial<SearchRequest>;
   initialState?: Partial<SearchState>;
   facets?: FacetConfig[];
-  searchOnMount?: boolean;
+  searchOnMount?: boolean; // default: true — false suppresses only the initial mount search
   onStateChange?: (state: SearchState) => void;
   children: React.ReactNode;
   performanceMode?: boolean;
   enableDisjunctiveFacetQueries?: boolean;
   accumulateFacets?: boolean;
+  debounceMs?: number; // default: 300 — debounce for query (text) changes
+  maxFacetValues?: number; // default: 10000
+  queryBy?: string; // comma-separated fields; overrides schema-derived fields
 }
 ```
 

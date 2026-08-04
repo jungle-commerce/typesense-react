@@ -418,6 +418,7 @@ function ProductAutocomplete() {
       config={typesenseConfig}
       collection="products"
       searchOnMount={false}
+      debounceMs={150} // Fast debounce for autocomplete
       initialSearchParams={{
         query_by: 'name,brand,category',
         prefix: true,
@@ -447,7 +448,6 @@ function AutocompleteInput({
   onSelectedIndexChange 
 }: any) {
   const { state, actions } = useSearch({
-    debounceMs: 150, // Fast debounce for autocomplete
     onSearchSuccess: (results) => {
       const newSuggestions = results.hits.map(hit => ({
         id: hit.document.id,

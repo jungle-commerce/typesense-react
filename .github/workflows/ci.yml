@@ -66,11 +66,8 @@ jobs:
         image: typesense/typesense:0.25.2
         ports:
           - 8108:8108
-        options: >-
-          --health-cmd "curl -f http://localhost:8108/health"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        volumes:
+          - /data
         env:
           TYPESENSE_DATA_DIR: /data
           TYPESENSE_API_KEY: test_api_key
@@ -166,11 +163,8 @@ jobs:
         image: typesense/typesense:0.25.2
         ports:
           - 8108:8108
-        options: >-
-          --health-cmd "curl -f http://localhost:8108/health"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        volumes:
+          - /data
         env:
           TYPESENSE_DATA_DIR: /data
           TYPESENSE_API_KEY: test_api_key
@@ -196,6 +190,12 @@ jobs:
     
     - name: Build package (for examples to link)
       run: npm run build
+
+    - name: Wait for Typesense
+      run: |
+        echo "Waiting for Typesense to be ready..."
+        timeout 60s bash -c 'until curl -sf http://localhost:8108/health > /dev/null 2>&1; do sleep 1; done'
+        echo "Typesense is ready!"
     
     - name: Install example dependencies
       working-directory: examples/${{ matrix.example }}

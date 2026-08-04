@@ -542,8 +542,9 @@ it('should update results when user types in search box', async () => {
 
 ```typescript
 it('should debounce search requests', async () => {
-  const { result } = renderHook(() => useSearch({ debounceMs: 300 }), {
-    wrapper: createSearchProviderWrapper()
+  // Debounce is a SearchProvider prop (default 300ms), not a useSearch option
+  const { result } = renderHook(() => useSearch(), {
+    wrapper: createSearchProviderWrapper({ debounceMs: 300 })
   });
 
   // Type quickly

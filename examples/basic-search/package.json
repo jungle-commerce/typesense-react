@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@jungle-commerce/typesense-react": "workspace:*",
+    "@jungle-commerce/typesense-react": "file:../..",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "typesense": "^1.7.2"

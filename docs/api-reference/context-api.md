@@ -34,11 +34,32 @@ interface SearchContextValue {
   client: TypesenseSearchClient;
   collection: string;
   initialSearchParams?: Partial<SearchRequest>;
+  searchEngine: SearchEngine;
   config: {
     searchOnMount: boolean;
     performanceMode: boolean;
     enableDisjunctiveFacetQueries: boolean;
   };
+}
+```
+
+### The Search Engine
+
+`searchEngine` is the provider's single search scheduler — every search for the provider tree (mount search, debounced query changes, filter changes, imperative calls) runs through it:
+
+```typescript
+interface SearchEngine {
+  /** Runs a search now. Without an argument, builds the request from the latest state. */
+  search: (request?: SearchRequest) => Promise<void>;
+  /** Builds a request from the latest state (optionally overriding queryBy/maxFacetValues) */
+  buildRequest: (overrides?: { queryBy?: string; maxFacetValues?: number }) => SearchRequest;
+  /** Registers search lifecycle listeners; returns an unsubscribe function */
+  subscribe: (listeners: SearchEventListeners) => () => void;
+}
+
+interface SearchEventListeners {
+  onSearchSuccess?: (results: TypesenseSearchResponse) => void;
+  onSearchError?: (error: Error) => void;
 }
 ```
 
@@ -602,6 +623,12 @@ const mockContextValue: SearchContextValue = {
   dispatch: vi.fn(),
   client: mockClient,
   collection: 'test-collection',
+  // searchEngine is required — stub it in hand-built context values
+  searchEngine: {
+    search: vi.fn(),
+    buildRequest: vi.fn(() => ({ q: '*', query_by: '*' })),
+    subscribe: vi.fn(() => () => {})
+  },
   config: {
     searchOnMount: false,
     performanceMode: false,

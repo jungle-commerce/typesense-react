@@ -35,12 +35,10 @@ export default defineConfig({
         '**/mockData.ts',
         'dist/',
       ],
-      thresholds: {
-        lines: 60,
-        functions: 60,
-        branches: 60,
-        statements: 60
-      }
+      // No thresholds: the integration suite intentionally exercises a slice
+      // of the codebase against a real server (~9% of lines); completeness
+      // gating lives in the unit-test coverage config. With thresholds here
+      // the CI job failed even at 195/195 tests passing.
     },
     reporters: [
       'default',

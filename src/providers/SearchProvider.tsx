@@ -6,8 +6,9 @@
 import React, { createContext, useReducer, useMemo, useEffect } from 'react';
 import { TypesenseSearchClient } from '../core/TypesenseClient';
 import { searchReducer, createInitialState } from '../core/searchReducer';
-import type { 
-  SearchProviderProps, 
+import { useProviderSearchEngine } from './useProviderSearchEngine';
+import type {
+  SearchProviderProps,
   SearchContextValue
 } from '../types';
 
@@ -27,11 +28,17 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
   initialState = {},
   initialSearchParams,
   facets = [],
-  searchOnMount = false,
+  // Default is true: before the engine moved provider-level, useSearch()
+  // defaulted searchOnMount to true, so a bare provider still mount-searched
+  // as soon as any consumer rendered. Keeping that observable behaviour.
+  searchOnMount = true,
   onStateChange,
   performanceMode = false,
   enableDisjunctiveFacetQueries = true,
   accumulateFacets = false,
+  debounceMs = 300,
+  maxFacetValues = 10000,
+  queryBy,
 }) => {
   // Initialize Typesense client with memoization to prevent recreating on every render
   const client = useMemo(() => {
@@ -73,6 +80,21 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
     }
   }, [initialState?.schema]);
 
+  // The single search engine for this provider tree. Owns the one
+  // auto-search effect; useSearch() call sites are readers/dispatchers.
+  const searchEngine = useProviderSearchEngine({
+    state,
+    dispatch,
+    client,
+    collection,
+    initialSearchParams,
+    searchOnMount,
+    enableDisjunctiveFacetQueries,
+    debounceMs,
+    maxFacetValues,
+    queryBy,
+  });
+
   // Create context value with memoization
   const contextValue = useMemo<SearchContextValue>(() => ({
     state,
@@ -80,18 +102,20 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
     client,
     collection,
     initialSearchParams,
+    searchEngine,
     config: {
       searchOnMount,
       performanceMode,
       enableDisjunctiveFacetQueries,
     },
   }), [
-    state, 
-    client, 
-    collection, 
+    state,
+    client,
+    collection,
     initialSearchParams,
-    searchOnMount, 
-    performanceMode, 
+    searchEngine,
+    searchOnMount,
+    performanceMode,
     enableDisjunctiveFacetQueries
   ]);
 

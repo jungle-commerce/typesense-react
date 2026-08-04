@@ -219,7 +219,7 @@ export class MultiCollectionSearchClient {
       q: request.query,
       query_by: config.queryBy || this.inferQueryFields(schema),
       per_page: config.maxResults || 20,
-      page: 1,
+      page: request.page || 1,
     };
 
     // Add sorting

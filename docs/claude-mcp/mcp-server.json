@@ -54,7 +54,7 @@
       "properties": {
         "debounceMs": { "type": "number", "default": 300 },
         "perPage": { "type": "number", "default": 10 },
-        "searchOnMount": { "type": "boolean", "default": false },
+        "searchOnMount": { "type": "boolean", "default": true },
         "accumulateFacets": { "type": "boolean", "default": false },
         "enableDisjunctiveFacetQueries": { "type": "boolean", "default": true }
       }

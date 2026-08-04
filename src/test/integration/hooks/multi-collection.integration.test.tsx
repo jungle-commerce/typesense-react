@@ -59,27 +59,21 @@ describe('Multi-Collection Search Integration Tests', () => {
   
   const collectionConfigs: CollectionSearchConfig[] = [
     {
-      name: 'products',
-      searchParams: {
-        query_by: 'name,description',
-        per_page: 10,
-      },
+      collection: 'products',
+      queryBy: 'name,description',
+      maxResults: 10,
       weight: 2,
     },
     {
-      name: 'categories',
-      searchParams: {
-        query_by: 'name,description',
-        per_page: 5,
-      },
+      collection: 'categories',
+      queryBy: 'name,description',
+      maxResults: 5,
       weight: 1.5,
     },
     {
-      name: 'users',
-      searchParams: {
-        query_by: 'name,email',
-        per_page: 5,
-      },
+      collection: 'users',
+      queryBy: 'name,email',
+      maxResults: 5,
       weight: 1,
     },
   ];
@@ -97,8 +91,10 @@ describe('Multi-Collection Search Integration Tests', () => {
     }));
     
     await waitFor(() => {
+      // results starts as null, so also require it to be populated —
+      // loading is false before the mount search has even been scheduled
+      expect(result.current.results).not.toBeNull();
       expect(result.current.loading).toBe(false);
-      expect(result.current.results).toBeDefined();
     }, { timeout: 5000 });
     
     const { hits, totalFoundByCollection } = result.current.results!;
@@ -126,7 +122,11 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: true,
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
     // Search for "1" which should match product, category, and user IDs
     act(() => {
@@ -158,7 +158,11 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: true,
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
     // Search for a common term
     act(() => {
@@ -189,12 +193,16 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: true,
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
     // Update collections with filter
-    const updatedConfigs = collectionConfigs.map(config => 
-      config.name === 'products' 
-        ? { ...config, searchParams: { ...config.searchParams, filter_by: 'category:=Electronics' } }
+    const updatedConfigs = collectionConfigs.map(config =>
+      config.collection === 'products'
+        ? { ...config, filterBy: 'category:=Electronics' }
         : config
     );
     
@@ -224,14 +232,18 @@ describe('Multi-Collection Search Integration Tests', () => {
       defaultMergeStrategy: 'relevance',
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
-    // Search with collection-weighted strategy
+    // Search with round-robin strategy
     act(() => {
       result.current.search({
         query: 'test',
         collections: collectionConfigs,
-        mergeStrategy: 'collection-weighted',
+        mergeStrategy: 'roundRobin',
       });
     });
     
@@ -271,7 +283,11 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: true,
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
     const firstPageHits = result.current.results?.hits.map(h => ({
       id: h.document.id,
@@ -306,12 +322,16 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: true,
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
     const initialTotal = result.current.results?.found || 0;
     
     // Remove users collection
-    const filteredConfigs = collectionConfigs.filter(c => c.name !== 'users');
+    const filteredConfigs = collectionConfigs.filter(c => c.collection !== 'users');
     
     act(() => {
       result.current.updateCollections(filteredConfigs);
@@ -343,17 +363,19 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: true,
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
     // Add invalid collection
     act(() => {
       result.current.updateCollections([
         ...collectionConfigs,
         {
-          name: 'non_existent',
-          searchParams: {
-            query_by: 'name',
-          },
+          collection: 'non_existent',
+          queryBy: 'name',
           weight: 1,
         },
       ]);
@@ -378,7 +400,11 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: true,
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
     const searchStartTime = Date.now();
     
@@ -412,7 +438,11 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: true,
     }));
     
-    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
+    await waitFor(() => {
+      // wait for the mount search to complete — loading is false before it is scheduled
+      expect(result.current.results).not.toBeNull();
+      expect(result.current.loading).toBe(false);
+    }, { timeout: 5000 });
     
     const hits = result.current.results?.hits || [];
     
@@ -445,11 +475,15 @@ describe('Multi-Collection Search Integration Tests', () => {
       searchOnMount: false,
     }));
     
-    // Search with large result limit
+    // Search with large per-collection and global result limits.
+    // The default configs cap collections at 10/5/5 hits, which can never
+    // exceed 50 — raise maxResults so a large merged result set is possible.
+    const largeResultConfigs = collectionConfigs.map(config => ({ ...config, maxResults: 50 }));
+
     act(() => {
       result.current.search({
         query: '*',
-        collections: collectionConfigs,
+        collections: largeResultConfigs,
         globalMaxResults: 100,
       });
     });

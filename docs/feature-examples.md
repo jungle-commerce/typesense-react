@@ -50,11 +50,21 @@ function SearchBox() {
 
 ### Search with Debouncing
 
+Debouncing is configured on the `SearchProvider` (default 300ms) — the deprecated `useSearch({ debounceMs })` option is a no-op:
+
+```tsx
+<SearchProvider
+  config={typesenseConfig}
+  collection="products"
+  debounceMs={300} // Wait 300ms after typing stops
+>
+  <DebouncedSearch />
+</SearchProvider>
+```
+
 ```tsx
 function DebouncedSearch() {
-  const { state, actions } = useSearch({
-    debounceMs: 300 // Wait 300ms after typing stops
-  });
+  const { state, actions } = useSearch();
 
   return (
     <input

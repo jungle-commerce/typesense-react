@@ -528,4 +528,142 @@ describe('TypesenseSearchClient Implementation', () => {
     vi.useRealTimers();
     vi.doUnmock('typesense');
   });
+
+  describe('in-flight request deduplication', () => {
+    /** Builds a client whose underlying search resolves on demand */
+    const setup = async () => {
+      let resolvers: Array<(value: any) => void> = [];
+      let rejecters: Array<(error: any) => void> = [];
+      const searchMock = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve, reject) => {
+            resolvers.push(resolve);
+            rejecters.push(reject);
+          })
+      );
+      const mockClient = {
+        collections: vi.fn().mockReturnValue({
+          documents: vi.fn().mockReturnValue({ search: searchMock }),
+        }),
+      };
+
+      vi.doMock('typesense', () => ({
+        default: {
+          Client: vi.fn().mockImplementation(() => mockClient),
+        },
+      }));
+
+      const { TypesenseSearchClient } = await import('../TypesenseClient');
+      const client = new TypesenseSearchClient({
+        nodes: [{ host: 'localhost', port: 8108, protocol: 'http' }],
+        apiKey: 'test-key',
+      });
+
+      return { client, searchMock, resolvers, rejecters };
+    };
+
+    const response = (id: string) => ({
+      hits: [{ document: { id } }],
+      found: 1,
+      search_time_ms: 1,
+      page: 1,
+      facet_counts: [],
+    });
+
+    afterEach(() => {
+      vi.doUnmock('typesense');
+    });
+
+    it('shares one network call between concurrent identical searches', async () => {
+      const { client, searchMock, resolvers } = await setup();
+      const params: SearchRequest = { q: '*', query_by: 'title' };
+
+      // 29 concurrent identical searches — the storm scenario
+      const promises = Array.from({ length: 29 }, () =>
+        client.search('products', params)
+      );
+
+      expect(searchMock).toHaveBeenCalledTimes(1);
+      expect(client.getCacheStats().inFlightCount).toBe(1);
+
+      resolvers[0](response('1'));
+      const results = await Promise.all(promises);
+
+      expect(searchMock).toHaveBeenCalledTimes(1);
+      results.forEach(result => expect(result.hits[0].document.id).toBe('1'));
+      expect(client.getCacheStats().inFlightCount).toBe(0);
+    });
+
+    it('does not merge concurrent searches with different params', async () => {
+      const { client, searchMock, resolvers } = await setup();
+
+      // A disjunctive bundle: main query + per-facet exclusion queries are
+      // different byte strings and must all reach the network
+      const main = client.search('products', { q: '*', query_by: 'title', facet_by: 'brand,category' });
+      const exclusionBrand = client.search('products', { q: '*', query_by: 'title', facet_by: 'brand', per_page: 0 });
+      const exclusionCategory = client.search('products', { q: '*', query_by: 'title', facet_by: 'category', per_page: 0 });
+
+      expect(searchMock).toHaveBeenCalledTimes(3);
+
+      resolvers.forEach((resolve, i) => resolve(response(String(i))));
+      await Promise.all([main, exclusionBrand, exclusionCategory]);
+    });
+
+    it('recovers after a failed request instead of pinning the rejection', async () => {
+      const { client, searchMock, resolvers, rejecters } = await setup();
+      const params: SearchRequest = { q: '*', query_by: 'title' };
+
+      const first = client.search('products', params);
+      const shared = client.search('products', params);
+      expect(searchMock).toHaveBeenCalledTimes(1);
+
+      rejecters[0](new Error('boom'));
+      await expect(first).rejects.toThrow('Typesense search failed: boom');
+      await expect(shared).rejects.toThrow('Typesense search failed: boom');
+      expect(client.getCacheStats().inFlightCount).toBe(0);
+
+      // Next identical search goes back to the network
+      const retry = client.search('products', params);
+      expect(searchMock).toHaveBeenCalledTimes(2);
+      resolvers[1](response('2'));
+      await expect(retry).resolves.toBeDefined();
+    });
+
+    it('clearCache() forces the next identical search onto the network', async () => {
+      const { client, searchMock, resolvers } = await setup();
+      const params: SearchRequest = { q: '*', query_by: 'title' };
+
+      const first = client.search('products', params);
+      expect(searchMock).toHaveBeenCalledTimes(1);
+
+      // A refresh flow clears the cache to force freshness mid-flight
+      client.clearCache();
+
+      const fresh = client.search('products', params);
+      expect(searchMock).toHaveBeenCalledTimes(2);
+
+      resolvers[0](response('stale'));
+      resolvers[1](response('fresh'));
+      await first;
+      const freshResult = await fresh;
+      expect(freshResult.hits[0].document.id).toBe('fresh');
+
+      // The pre-clear request settling must not evict the newer in-flight entry
+      expect(client.getCacheStats().inFlightCount).toBe(0);
+    });
+
+    it('bypasses dedup when useCache is false', async () => {
+      const { client, searchMock, resolvers } = await setup();
+      const params: SearchRequest = { q: '*', query_by: 'title' };
+
+      const first = client.search('products', params, false);
+      const second = client.search('products', params, false);
+      expect(searchMock).toHaveBeenCalledTimes(2);
+
+      resolvers[0](response('1'));
+      resolvers[1](response('2'));
+      await Promise.all([first, second]);
+      expect(client.getCacheStats().inFlightCount).toBe(0);
+    });
+  });
 });

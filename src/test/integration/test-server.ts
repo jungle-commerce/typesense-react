@@ -169,17 +169,17 @@ export function generateTestUsers(count: number) {
 export async function seedTestData(client: Typesense.Client, options: { productCount?: number; userCount?: number } = {}) {
   const { productCount = 100, userCount = 50 } = options;
   
-  // Import products
+  // Upsert so re-seeding is idempotent: suites re-seed after recreating only
+  // the products collection, and a plain create-import then fails every
+  // already-existing categories/users document and throws before any test runs
   const products = generateTestProducts(productCount);
-  await client.collections('products').documents().import(products);
-  
-  // Import categories
+  await client.collections('products').documents().import(products, { action: 'upsert' });
+
   const categories = generateTestCategories();
-  await client.collections('categories').documents().import(categories);
-  
-  // Import users
+  await client.collections('categories').documents().import(categories, { action: 'upsert' });
+
   const users = generateTestUsers(userCount);
-  await client.collections('users').documents().import(users);
+  await client.collections('users').documents().import(users, { action: 'upsert' });
   
   return { products, categories, users };
 }

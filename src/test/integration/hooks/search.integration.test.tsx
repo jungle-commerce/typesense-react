@@ -305,35 +305,30 @@ describe('Search Hook Integration Tests', () => {
     
     await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
     
-    // Trigger multiple updates concurrently
+    // Trigger multiple updates concurrently. The provider engine coalesces
+    // these into a single (debounced) search built from the final state —
+    // last-intent-wins. 'Product' matches every seeded doc, so the brand
+    // filter is what narrows the results.
     act(() => {
-      result.current.actions.setQuery('test');
+      result.current.actions.setQuery('Product');
       result.current.actions.setAdditionalFilters('brand:=Apple');
       result.current.actions.setSortBy('rating:desc');
     });
-    
+
     await waitFor(() => {
-      expect(result.current.state.query).toBe('test');
+      expect(result.current.state.query).toBe('Product');
       expect(result.current.state.sortBy).toBe('rating:desc');
       expect(result.current.state.additionalFilters).toBe('brand:=Apple');
-      expect(result.current.state.results).toBeDefined();
+      // Until the debounced search for the new intent commits, state.results
+      // still holds the previous search's hits — wait for the committed
+      // results to reflect the new query before inspecting them.
+      expect(result.current.state.results?.request_params.q).toBe('Product');
       expect(result.current.loading).toBe(false);
     }, { timeout: 5000 });
-    
-    // Verify state was updated correctly
+
+    // The committed results come from ONE request built from the final state,
+    // so every hit must honour the concurrently-applied brand filter.
     const results = result.current.state.results?.hits || [];
-    
-    // Since we're searching for 'test' with Apple brand filter,
-    // verify we have results (may be empty if no Apple products match 'test')
-    expect(result.current.state.results).toBeDefined();
-    
-    // If we have results with the Apple filter, they should all be Apple brand
-    if (results.length > 0 && result.current.state.additionalFilters === 'brand:=Apple') {
-      const allApple = results.every(h => h.document.brand === 'Apple');
-      // Only check if we have Apple products in the test data
-      if (results.some(h => h.document.brand === 'Apple')) {
-        expect(allApple).toBe(true);
-      }
-    }
+    expect(results.every(h => h.document.brand === 'Apple')).toBe(true);
   });
 });
