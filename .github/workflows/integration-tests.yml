@@ -30,9 +30,9 @@ jobs:
     
     - name: Start Typesense container
       run: |
-        docker-compose -f docker-compose.test.yml up -d
+        docker compose -f docker-compose.test.yml up -d
         echo "Waiting for Typesense to be ready..."
-        timeout 30s bash -c 'until docker-compose -f docker-compose.test.yml exec -T typesense-test curl -f http://localhost:8108/health > /dev/null 2>&1; do sleep 1; done'
+        timeout 30s bash -c 'until docker compose -f docker-compose.test.yml exec -T typesense-test curl -f http://localhost:8108/health > /dev/null 2>&1; do sleep 1; done'
         echo "Typesense is ready!"
     
     - name: Run integration tests
@@ -55,7 +55,7 @@ jobs:
     
     - name: Stop containers
       if: always()
-      run: docker-compose -f docker-compose.test.yml down -v
+      run: docker compose -f docker-compose.test.yml down -v
     
     - name: Clean up Docker resources
       if: always()
@@ -89,7 +89,7 @@ jobs:
     
     - name: Start Typesense container
       run: |
-        docker-compose -f docker-compose.test.yml up -d
+        docker compose -f docker-compose.test.yml up -d
         timeout 30s bash -c 'until docker exec typesense-react-test curl -f http://localhost:8108/health > /dev/null 2>&1; do sleep 1; done'
     
     - name: Install example dependencies
@@ -107,4 +107,4 @@ jobs:
     
     - name: Stop containers
       if: always()
-      run: docker-compose -f docker-compose.test.yml down -v
+      run: docker compose -f docker-compose.test.yml down -v

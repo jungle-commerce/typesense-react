@@ -780,8 +780,14 @@ describe('Integration Tests', () => {
         connectionTimeoutSeconds: 2,
       };
 
-      // TypesenseClient should throw on invalid config
-      (TypesenseSearchClient as any).mockImplementationOnce(() => {
+      // TypesenseClient should throw on invalid config. Must throw on EVERY
+      // construction attempt (not mockImplementationOnce): React 19 retries a
+      // thrown concurrent render synchronously, and a once-mock lets the
+      // retry succeed — the boundary then never engages and the aborted first
+      // pass is reported as a window-level "recoverable" error, which vitest
+      // counts as an unhandled error. beforeEach reinstalls the normal
+      // implementation for the following tests.
+      (TypesenseSearchClient as any).mockImplementation(() => {
         throw new Error('Invalid configuration: No nodes provided');
       });
 
@@ -789,28 +795,42 @@ describe('Integration Tests', () => {
         return <div>Test</div>;
       };
 
+      // Without a boundary, React 19's concurrent-render recovery reports the
+      // render-phase throw as a window-level error, which vitest counts as an
+      // unhandled error and fails the run — a boundary keeps it contained and
+      // is also how real apps consume a provider whose config may be invalid.
+      class ConfigErrorBoundary extends React.Component<
+        { children: React.ReactNode },
+        { error: Error | null }
+      > {
+        state = { error: null as Error | null };
+        static getDerivedStateFromError(error: Error) {
+          return { error };
+        }
+        render() {
+          return this.state.error ? (
+            <div data-testid="config-error">{this.state.error.message}</div>
+          ) : (
+            this.props.children
+          );
+        }
+      }
+
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      // React catches errors during rendering, so we need to use ErrorBoundary or check console.error
-      let errorThrown = false;
-      try {
-        render(
+      render(
+        <ConfigErrorBoundary>
           <SearchProvider config={invalidConfig} collection="products">
             <TestComponent />
           </SearchProvider>
-        );
-      } catch (error: any) {
-        errorThrown = true;
-        expect(error.message).toContain('Invalid configuration');
-      }
+        </ConfigErrorBoundary>
+      );
 
-      // Check that console.error was called with the error
+      // The construction error surfaces through the boundary
+      expect(screen.getByTestId('config-error')).toHaveTextContent('Invalid configuration');
+
+      // React also reports the caught render error via console.error
       expect(consoleSpy).toHaveBeenCalled();
-      
-      // The error is being thrown, we can see it in the test output
-      // React handles errors during rendering differently in React 19
-      // Just verify that console.error was called
-      expect(consoleSpy.mock.calls.length).toBeGreaterThan(0);
 
       consoleSpy.mockRestore();
     });

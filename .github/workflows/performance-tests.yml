@@ -25,6 +25,8 @@ jobs:
         image: typesense/typesense:0.25.2
         ports:
           - 8108:8108
+        volumes:
+          - /data
         options: >-
           --health-cmd "curl -f http://localhost:8108/health"
           --health-interval 10s
