@@ -110,7 +110,26 @@ describe('Facet Hooks Integration Tests', () => {
       </SearchProvider>
     );
   }
-  
+
+  /** Same as createWrapper but with facet accumulation enabled */
+  function createAccumulatingWrapper({ children }: { children: ReactNode }) {
+    return (
+      <SearchProvider
+        config={TEST_SERVER_CONFIG}
+        collection="products"
+        initialSearchParams={{
+          query_by: 'name,description',
+          per_page: 20,
+          facet_by: facetConfig.map(f => f.field).join(','),
+        }}
+        facets={facetConfig}
+        accumulateFacets={true}
+        searchOnMount={true}>
+        {children}
+      </SearchProvider>
+    );
+  }
+
   describe('useFacetState', () => {
     it('should handle single value facets with real data', async () => {
       const { result: searchResult } = renderHook(
@@ -366,64 +385,79 @@ describe('Facet Hooks Integration Tests', () => {
     
     it('should clear all filters', async () => {
       const { result } = renderHook(
-        () => useAdvancedFacets(facetConfig),
+        () => ({ search: useSearch(), facets: useAdvancedFacets() }),
         { wrapper: createWrapper }
       );
-      
+
       await waitFor(() => {
-        expect(result.current.facetStates.category).toBeDefined();
+        expect(result.current.search.loading).toBe(false);
+        expect(result.current.search.state.results?.facet_counts).toBeDefined();
       }, { timeout: 5000 });
-      
+
+      const categoryFacet = result.current.search.state.results?.facet_counts?.find(
+        f => f.field_name === 'category'
+      );
+
       // Apply some filters
       act(() => {
-        if (result.current.facetStates.category.facetCounts.length > 0) {
-          result.current.facetStates.category.handleFacetChange(
-            result.current.facetStates.category.facetCounts[0].value
-          );
+        const firstValue = categoryFacet?.counts[0]?.value;
+        if (firstValue) {
+          result.current.facets.actions.toggleFacetValue('category', firstValue);
         }
-        result.current.facetStates.price.handleNumericChange({ min: 100, max: 500 });
+        result.current.facets.actions.setNumericFilter('price', 100, 500);
       });
-      
+
       await waitFor(() => {
-        expect(result.current.getFilterBy()).not.toBe('');
+        expect(result.current.facets.activeFilterCount).toBeGreaterThan(0);
       }, { timeout: 5000 });
-      
+
       // Clear all
       act(() => {
-        result.current.clearAllFilters();
+        result.current.facets.actions.clearAllFilters();
       });
-      
+
       await waitFor(() => {
-        expect(result.current.getFilterBy()).toBe('');
-        expect(result.current.facetStates.category.selectedValues).toHaveLength(0);
-        expect(result.current.facetStates.price.numericRange).toBeUndefined();
+        expect(result.current.facets.activeFilterCount).toBe(0);
+        expect(result.current.facets.disjunctiveFacets.category).toBeUndefined();
+        expect(result.current.facets.numericFilters.price).toBeUndefined();
       }, { timeout: 5000 });
     });
     
     it('should handle facet count updates after filtering', async () => {
       const { result } = renderHook(
-        () => useAdvancedFacets(facetConfig),
+        () => ({ search: useSearch(), facets: useAdvancedFacets() }),
         { wrapper: createWrapper }
       );
-      
+
       await waitFor(() => {
-        expect(result.current.facetStates.category).toBeDefined();
+        expect(result.current.search.loading).toBe(false);
+        expect(result.current.search.state.results?.facet_counts).toBeDefined();
       }, { timeout: 5000 });
-      
-      const initialBrandCount = result.current.facetStates.brand.facetCounts.length;
-      
+
+      const getFacetCounts = (field: string) =>
+        result.current.search.state.results?.facet_counts?.find(
+          f => f.field_name === field
+        )?.counts ?? [];
+
+      const initialResults = result.current.search.state.results;
+      const initialBrandCount = getFacetCounts('brand').length;
+      const firstCategory = getFacetCounts('category')[0]?.value;
+
+      expect(firstCategory).toBeDefined();
+
       // Filter by category
       act(() => {
-        if (result.current.facetStates.category.facetCounts.length > 0) {
-          result.current.facetStates.category.handleFacetChange(
-            result.current.facetStates.category.facetCounts[0].value
-          );
+        if (firstCategory) {
+          result.current.facets.actions.toggleFacetValue('category', firstCategory);
         }
       });
-      
+
       await waitFor(() => {
+        // A new search reflecting the filter must have completed
+        expect(result.current.search.state.results).not.toBe(initialResults);
+        expect(result.current.search.loading).toBe(false);
         // Brand counts should update based on selected category
-        const updatedBrandCount = result.current.facetStates.brand.facetCounts.length;
+        const updatedBrandCount = getFacetCounts('brand').length;
         expect(updatedBrandCount).toBeLessThanOrEqual(initialBrandCount);
       }, { timeout: 5000 });
     });
@@ -432,117 +466,112 @@ describe('Facet Hooks Integration Tests', () => {
   describe('useAccumulatedFacets', () => {
     it('should accumulate facets across searches', async () => {
       const { result } = renderHook(
-        () => useAccumulatedFacets(['category', 'brand']),
-        { wrapper: createWrapper }
+        () => useAccumulatedFacets(),
+        { wrapper: createAccumulatingWrapper }
       );
-      
+
       await waitFor(() => {
-        expect(result.current.accumulatedFacets.category).toBeDefined();
-        expect(result.current.accumulatedFacets.brand).toBeDefined();
+        expect(result.current.accumulatedFacetValues.category).toBeDefined();
+        expect(result.current.accumulatedFacetValues.brand).toBeDefined();
       }, { timeout: 5000 });
-      
-      const initialCategories = Object.keys(result.current.accumulatedFacets.category);
-      const initialBrands = Object.keys(result.current.accumulatedFacets.brand);
-      
+
+      const initialCategories = result.current.accumulatedFacetValues.category.orderedValues;
+      const initialBrands = result.current.accumulatedFacetValues.brand.orderedValues;
+
       expect(initialCategories.length).toBeGreaterThan(0);
       expect(initialBrands.length).toBeGreaterThan(0);
-      
-      // Verify counts
-      const totalCategoryCount = Object.values(result.current.accumulatedFacets.category)
-        .reduce((sum, count) => sum + count, 0);
+
+      // Verify counts via the merged view (accumulated values + current counts)
+      const totalCategoryCount = result.current.getMergedFacetValues('category')
+        .reduce((sum, facetValue) => sum + facetValue.count, 0);
       expect(totalCategoryCount).toBeGreaterThan(0);
     });
     
     it('should maintain accumulated facets when filters change', async () => {
-      const wrapper = ({ children }: { children: ReactNode }) => {
-        const [filter, setFilter] = React.useState('');
-        
-        React.useImperativeHandle(globalThis.testRef, () => ({
-          setFilter,
-        }));
-        
-        return (
-          <SearchProvider
-            config={TEST_SERVER_CONFIG}
-            collection="products"
-            initialSearchParams={{
-              query_by: 'name,description',
-              per_page: 20,
-              facet_by: 'category,brand',
-              filter_by: filter || undefined,
-            }}
-            facets={[
-              { field: 'category', label: 'Category', type: 'checkbox' },
-              { field: 'brand', label: 'Brand', type: 'checkbox' }
-            ]}
-            searchOnMount={true}
-          >
-            {children}
-          </SearchProvider>
-        );
-      };
-      
-      globalThis.testRef = React.createRef();
-      
       const { result } = renderHook(
-        () => useAccumulatedFacets(['category', 'brand']),
-        { wrapper }
+        () => ({
+          search: useSearch(),
+          facets: useAdvancedFacets(),
+          accumulated: useAccumulatedFacets(),
+        }),
+        { wrapper: createAccumulatingWrapper }
       );
-      
+
       await waitFor(() => {
-        expect(result.current.accumulatedFacets.category).toBeDefined();
+        expect(result.current.accumulated.accumulatedFacetValues.category).toBeDefined();
       }, { timeout: 5000 });
-      
-      const initialAccumulated = { ...result.current.accumulatedFacets };
-      
-      // Apply filter
+
+      const initialCategories = [
+        ...result.current.accumulated.accumulatedFacetValues.category.orderedValues,
+      ];
+      expect(initialCategories.length).toBeGreaterThan(0);
+
+      const initialResults = result.current.search.state.results;
+
+      // Apply a filter that narrows results to a single category
       act(() => {
-        globalThis.testRef.current?.setFilter('category:=Electronics');
+        result.current.facets.actions.setSelectiveFilter('category', initialCategories[0]);
       });
-      
+
       await waitFor(() => {
-        // Accumulated facets should still contain all values seen
-        expect(Object.keys(result.current.accumulatedFacets.category)).toEqual(
-          Object.keys(initialAccumulated.category)
-        );
+        // A new, filtered search must have completed
+        expect(result.current.search.state.results).not.toBe(initialResults);
+        expect(result.current.search.loading).toBe(false);
       }, { timeout: 5000 });
+
+      // Accumulated facets should still contain all values seen
+      expect(
+        result.current.accumulated.accumulatedFacetValues.category.orderedValues
+      ).toEqual(initialCategories);
+
+      // And the merged view still exposes every accumulated value
+      const mergedValues = result.current.accumulated.getMergedFacetValues('category')
+        .map(facetValue => facetValue.value);
+      expect([...mergedValues].sort()).toEqual([...initialCategories].sort());
     });
     
     it('should reset accumulated facets', async () => {
       const { result } = renderHook(
-        () => useAccumulatedFacets(['category', 'brand']),
-        { wrapper: createWrapper }
+        () => useAccumulatedFacets(),
+        { wrapper: createAccumulatingWrapper }
       );
-      
+
       await waitFor(() => {
-        expect(Object.keys(result.current.accumulatedFacets.category).length).toBeGreaterThan(0);
+        expect(
+          result.current.accumulatedFacetValues.category?.orderedValues.length
+        ).toBeGreaterThan(0);
+        expect(
+          result.current.accumulatedFacetValues.brand?.orderedValues.length
+        ).toBeGreaterThan(0);
       }, { timeout: 5000 });
-      
+
       // Reset
       act(() => {
-        result.current.resetAccumulated();
+        result.current.clearAccumulatedFacets();
       });
-      
-      expect(result.current.accumulatedFacets.category).toEqual({});
-      expect(result.current.accumulatedFacets.brand).toEqual({});
+
+      expect(result.current.accumulatedFacetValues.category).toBeUndefined();
+      expect(result.current.accumulatedFacetValues.brand).toBeUndefined();
     });
     
     it('should handle array field facets', async () => {
       const { result } = renderHook(
-        () => useAccumulatedFacets(['tags']),
-        { wrapper: createWrapper }
+        () => useAccumulatedFacets(),
+        { wrapper: createAccumulatingWrapper }
       );
-      
+
       await waitFor(() => {
-        expect(result.current.accumulatedFacets.tags).toBeDefined();
+        expect(result.current.accumulatedFacetValues.tags).toBeDefined();
       }, { timeout: 5000 });
-      
-      const tagValues = Object.keys(result.current.accumulatedFacets.tags);
+
+      const tagValues = result.current.accumulatedFacetValues.tags.orderedValues;
       expect(tagValues.length).toBeGreaterThan(0);
-      
-      // Each tag should have a positive count
-      tagValues.forEach(tag => {
-        expect(result.current.accumulatedFacets.tags[tag]).toBeGreaterThan(0);
+
+      // Each tag should have a positive count in the merged view
+      const mergedTags = result.current.getMergedFacetValues('tags');
+      expect(mergedTags.length).toBeGreaterThan(0);
+      mergedTags.forEach(tag => {
+        expect(tag.count).toBeGreaterThan(0);
       });
     });
   });
@@ -550,35 +579,37 @@ describe('Facet Hooks Integration Tests', () => {
   describe('Facet Performance', () => {
     it('should handle large number of facet values efficiently', async () => {
       const startTime = Date.now();
-      
+
       const { result } = renderHook(
-        () => useAdvancedFacets(facetConfig),
+        () => ({ search: useSearch(), facets: useAdvancedFacets() }),
         { wrapper: createWrapper }
       );
-      
+
       await waitFor(() => {
-        expect(result.current.facetStates.category).toBeDefined();
+        expect(result.current.search.state.results?.facet_counts).toBeDefined();
       }, { timeout: 5000 });
-      
+
       const loadTime = Date.now() - startTime;
       expect(loadTime).toBeLessThan(2000); // Should load within 2 seconds
-      
+
       // Test filtering performance
       const filterStartTime = Date.now();
-      
+
+      const facetCounts = result.current.search.state.results?.facet_counts ?? [];
+
       act(() => {
-        // Apply multiple filters
-        Object.entries(result.current.facetStates).forEach(([field, state]) => {
-          if (state.facetCounts?.length > 0 && field !== 'price' && field !== 'rating') {
-            state.handleFacetChange(state.facetCounts[0].value);
+        // Apply one filter per non-numeric facet field
+        facetCounts.forEach(facet => {
+          if (facet.field_name !== 'price' && facet.field_name !== 'rating' && facet.counts.length > 0) {
+            result.current.facets.actions.toggleFacetValue(facet.field_name, facet.counts[0].value);
           }
         });
       });
-      
+
       await waitFor(() => {
-        expect(result.current.getFilterBy()).not.toBe('');
+        expect(result.current.facets.activeFilterCount).toBeGreaterThan(0);
       }, { timeout: 5000 });
-      
+
       const filterTime = Date.now() - filterStartTime;
       expect(filterTime).toBeLessThan(1000); // Filtering should be fast
     });

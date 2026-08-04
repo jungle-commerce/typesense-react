@@ -456,6 +456,17 @@ describe('Advanced Integration Tests', () => {
       }
     });
 
+    afterAll(async () => {
+      // Remove the extra document added by the synonym test so later suites
+      // (e.g. "should handle large result sets efficiently") still see exactly
+      // the 100 seeded products.
+      try {
+        await client.collections(SCHEMAS.products.name).documents('laptop_test').delete();
+      } catch (e) {
+        // Document might not exist if the test didn't run
+      }
+    });
+
     it('should find results using synonyms', async () => {
       // First, add a product with specific terms
       await client.collections(SCHEMAS.products.name).documents().upsert({

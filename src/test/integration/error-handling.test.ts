@@ -110,8 +110,6 @@ describe('Error Handling Integration Tests', () => {
 
   describe('Network Failures and Retries', () => {
     it('should handle connection timeout', async () => {
-      // Skip this test when TypesenseSearchClient is mocked
-      // In real integration tests, this would test actual timeouts
       const invalidClient = new TypesenseSearchClient({
         nodes: [{
           host: 'invalid-host-that-does-not-exist.local',
@@ -122,13 +120,22 @@ describe('Error Handling Integration Tests', () => {
         connectionTimeoutSeconds: 0.1, // Very short timeout
         numRetries: 0 // No retries
       });
-      
-      // When mocked, search always succeeds
-      const result = await invalidClient.search('test_collection', {
-        q: 'test',
-        query_by: 'title'
+
+      // typesense-js surfaces an unreachable host as a network-level Error once
+      // retries are exhausted (the exact message varies by fetch adapter, e.g.
+      // "Network Error"). TypesenseSearchClient.executeSearch wraps it with
+      // search context — assert that wrapped shape rather than the raw error.
+      await expect(
+        invalidClient.search('test_collection', {
+          q: 'test',
+          query_by: 'title'
+        })
+      ).rejects.toMatchObject({
+        message: expect.stringMatching(/^Typesense search failed: /),
+        collection: 'test_collection',
+        params: expect.objectContaining({ q: 'test', query_by: 'title' }),
+        originalError: expect.any(Error)
       });
-      expect(result).toBeDefined();
     });
 
     it('should retry failed requests', async () => {

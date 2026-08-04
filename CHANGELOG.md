@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `buildSearchRequest` utility export (pure request builder shared by the engine and imperative searches).
 - `getCacheStats()` now reports `inFlightCount`.
+- Restored `page` on `MultiCollectionSearchRequest` — the pagination parameter was lost in the v3 rewrite, so every multi-collection search silently returned page 1.
+
+### Tests
+- The dormant integration suite (never run since CI broke) is repaired: 195/195 against a real Typesense server. Most failures were v2-era API drift in the tests; genuine library fixes that came out of it are the multi-collection `page` restoration above and idempotent test seeding.
 
 ## [2.0.3] - 2025-01-03
 

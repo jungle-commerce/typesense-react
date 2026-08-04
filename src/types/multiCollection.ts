@@ -56,6 +56,9 @@ export interface MultiCollectionSearchRequest {
   
   /** Global maximum results across all collections */
   globalMaxResults?: number;
+
+  /** Page number applied to each collection's search (default: 1) */
+  page?: number;
   
   /** Enable search term highlighting */
   enableHighlighting?: boolean;
