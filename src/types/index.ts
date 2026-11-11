@@ -58,6 +58,7 @@ export interface SearchRequest {
   cache_ttl?: number;
   prioritize_exact_match?: boolean;
   exhaustive_search?: boolean;
+  max_candidates?: number;
   pinned_hits?: string;
   hidden_hits?: string;
   preset?: string;
