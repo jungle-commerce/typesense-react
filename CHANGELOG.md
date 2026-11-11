@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-11-11
+
+### Added
+- `SearchProvider`'s `initialSearchParams` now sends every key the provider does not build itself (e.g. `max_candidates`, `exhaustive_search`, `prefix`), on the main request and on the disjunctive facet queries. Before, only `query_by`, `per_page` and `sort_by` were read and every other key was dropped. Keys the provider builds (`q`, `query_by`, `filter_by`, `facet_by`, `max_facet_values`, `page`, `per_page`, `sort_by`) still take their built value.
+- `CollectionSearchConfig.searchParams`: extra Typesense parameters for one collection of a multi-collection search. Keys built from the config's other fields win over the same key here.
+- `SearchRequest.max_candidates`.
+
+### Changed
+- ⚠️ A key in `initialSearchParams` that was ignored before is now sent. Check what your trees pass there.
+
 ## [3.1.0] - 2026-08-04
 
 ### Fixed
