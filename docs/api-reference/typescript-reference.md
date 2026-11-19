@@ -632,6 +632,12 @@ interface CollectionSearchConfig {
   
   /** Fields to exclude from the response (comma-separated) */
   excludeFields?: string;
+
+  /**
+   * Extra Typesense parameters for this collection (e.g. `max_candidates`).
+   * Keys built from the fields above win over the same key here.
+   */
+  searchParams?: Partial<SearchRequest>;
 }
 ```
 

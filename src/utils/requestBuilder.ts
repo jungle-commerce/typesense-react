@@ -16,7 +16,10 @@ export interface BuildSearchRequestOptions {
   queryBy?: string;
   /** Maximum number of facet values to return */
   maxFacetValues?: number;
-  /** Provider-level initial search parameters (query_by / per_page / sort_by fallbacks) */
+  /**
+   * Provider-level search parameters. `query_by` / `per_page` / `sort_by` are
+   * fallbacks; every other key is sent as given unless the builder sets it.
+   */
   initialSearchParams?: Partial<SearchRequest>;
 }
 
@@ -68,6 +71,7 @@ export function buildSearchRequest(
   }
 
   return {
+    ...initialSearchParams,
     q: state.query || '*',
     query_by: searchFields || '*', // Use * as fallback to search all fields
     filter_by: filterBy || undefined,

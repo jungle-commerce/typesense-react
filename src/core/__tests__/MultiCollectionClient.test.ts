@@ -617,6 +617,39 @@ describe('MultiCollectionClient', () => {
       );
     });
 
+    it('sends a collection\'s extra search params', async () => {
+      (mockClient.search as any).mockResolvedValue(mockSearchResponse);
+      (mockClient.getSchema as any).mockResolvedValue(mockSchema);
+
+      await multiClient.searchMultipleCollections({
+        query: 'test',
+        collections: [
+          {
+            collection: 'products',
+            queryBy: 'name',
+            sortBy: 'created_at:desc',
+            searchParams: { max_candidates: 10000, query_by: 'description', sort_by: 'price:asc' },
+          },
+          { collection: 'categories', queryBy: 'name' },
+        ],
+      });
+
+      expect(mockClient.search).toHaveBeenCalledWith(
+        'products',
+        expect.objectContaining({
+          max_candidates: 10000,
+          query_by: 'name',
+          sort_by: 'created_at:desc',
+          q: 'test',
+        }),
+        true
+      );
+      const categoriesParams = (mockClient.search as any).mock.calls.find(
+        ([collection]: [string]) => collection === 'categories'
+      )[1];
+      expect(categoriesParams).not.toHaveProperty('max_candidates');
+    });
+
     it('includes namespace in results when specified', async () => {
       (mockClient.search as any).mockResolvedValue(mockSearchResponse);
       (mockClient.getSchema as any).mockResolvedValue(mockSchema);

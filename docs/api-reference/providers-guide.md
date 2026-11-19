@@ -47,7 +47,7 @@ function App() {
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `initialState` | `Partial<SearchState>` | `{}` | Initial search state values |
-| `initialSearchParams` | `Partial<SearchRequest>` | `undefined` | Initial search parameters |
+| `initialSearchParams` | `Partial<SearchRequest>` | `undefined` | Search parameters. `query_by`, `per_page` and `sort_by` are fallbacks; any other key the provider does not build (e.g. `max_candidates`) is sent on every request |
 | `facets` | `FacetConfig[]` | `[]` | Facet configurations |
 | `searchOnMount` | `boolean` | `true` | Whether to perform the initial search on mount. `false` suppresses only the mount search — later query changes still search |
 | `debounceMs` | `number` | `300` | Debounce delay for query (text) changes in milliseconds |
@@ -251,6 +251,7 @@ interface CollectionSearchConfig {
   facetBy?: string;
   includeFields?: string;
   excludeFields?: string;
+  searchParams?: Partial<SearchRequest>; // extra parameters, e.g. { max_candidates: 10000 }
 }
 ```
 

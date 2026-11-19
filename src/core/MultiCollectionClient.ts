@@ -216,6 +216,7 @@ export class MultiCollectionSearchClient {
   ): Promise<SearchRequest> {
     // Start with base parameters
     const params: SearchRequest = {
+      ...config.searchParams,
       q: request.query,
       query_by: config.queryBy || this.inferQueryFields(schema),
       per_page: config.maxResults || 20,
